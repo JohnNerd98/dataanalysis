@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Data Analysis Question</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism-okaidia.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Python Data Analysis Question</h1>
+        </header>
+        
+        <section class="question">
+            <h2>Question:</h2>
+            <p>You are given a Python script that processes customer data from a CSV file (acw_user_data.csv) and generates various plots using the pandas, seaborn, and matplotlib libraries. The script performs the following operations:</p>
+            
+            <ul>
+                <li><strong>Loads the CSV File:</strong> Reads data from acw_user_data.csv and handles potential errors such as missing files, empty files, and parsing issues.</li>
+                <li><strong>Cleans the 'Dependants' Column:</strong> Converts the 'Dependants' column to a numeric type, replacing invalid values with 0.</li>
+                <li><strong>Validates Required Columns:</strong> Ensures that specific columns exist in the dataset before proceeding with visualizations.</li>
+                <li><strong>Generates Various Plots:</strong>
+                    <ul>
+                        <li>Age Distribution: Displays a histogram of customers' ages.</li>
+                        <li>Dependants Distribution: Shows the count of different numbers of dependants.</li>
+                        <li>Age Distribution by Marital Status: Plots a histogram segmented by marital status.</li>
+                    </ul>
+                </li>
+                <li><strong>Scatter Plots:</strong>
+                    <ul>
+                        <li>Distance Commuted to Work vs. Salary</li>
+                        <li>Age vs. Salary</li>
+                        <li>Age vs. Salary (Conditioned by Dependants)</li>
+                    </ul>
+                </li>
+                <li><strong>Saves Plots:</strong> All generated plots are saved in a plots/ directory.</li>
+            </ul>
+            
+            <div class="tasks">
+                <h3>Tasks:</h3>
+                <ol type="a">
+                    <li>The function load_csv() includes error handling for missing and empty files. If the CSV file is not found, what message is displayed, and what is returned by the function?</li>
+                    <li>In the function validate_columns(df, required_columns), what is returned when one or more required columns are missing, and how does this impact subsequent function execution?</li>
+                    <li>How does the script ensure that the 'Dependants' column is correctly formatted before visualization, and what method is used to handle invalid values?</li>
+                    <li>The function plot_scatter_plots(df) requires a set of specific columns. What happens if any of these columns are missing, and how does the function alert the user?</li>
+                </ol>
+            </div>
+        </section>
+        
+        <section class="solution">
+            <h2>Solution</h2>
+            <pre><code class="language-python">import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import os
+
+# Define file paths
+CSV_FILE_PATH = "acw_user_data.csv"
+PLOTS_DIR = "plots"
+
+# Ensure the plots directory exists
+os.makedirs(PLOTS_DIR, exist_ok=True)
+
+# Function to load CSV file
+def load_csv(file_path):
+    if not os.path.exists(file_path):
+        print(f"Error: File '{file_path}' not found. Please check the path.")
+        return None
+    try:
+        return pd.read_csv(file_path)
+    except pd.errors.EmptyDataError:
+        print("Error: The CSV file is empty.")
+    except pd.errors.ParserError as e:
+        print(f"Error: {e}")
+
+# Function to clean 'Dependants' column
+def clean_dependants_column(df):
+    if 'Dependants' in df.columns:
+        df['Dependants'] = pd.to_numeric(df['Dependants'], errors='coerce').fillna(0)
+    return df
+
+# Function to validate required columns
+def validate_columns(df, required_columns):
+    missing = [col for col in required_columns if col not in df.columns]
+    if missing:
+        print(f"Error: Missing columns {missing}")
+        return False
+    return True
+
+# Function to plot and save age distribution
+def plot_age_distribution(df):
+    if 'Age (Years)' not in df.columns:
+        print("Error: 'Age (Years)' column is missing.")
+        return
+    plt.figure(figsize=(10, 6))
+    sns.histplot(df['Age (Years)'], bins=10, kde=True, color="royalblue", edgecolor="black", alpha=0.7)
+    plt.title("Age Distribution of Customers", fontsize=14, fontweight='bold')
+    plt.xlabel("Age (Years)", fontsize=12)
+    plt.ylabel("Count", fontsize=12)
+    plt.savefig(os.path.join(PLOTS_DIR, "age_distribution.png"), dpi=300, bbox_inches='tight')
+    plt.show()
+
+# Function to plot and save dependants distribution
+def plot_dependants_distribution(df):
+    if 'Dependants' not in df.columns:
+        print("Error: 'Dependants' column is missing.")
+        return
+    plt.figure(figsize=(10, 6))
+    sns.countplot(data=df, x='Dependants', edgecolor="black")
+    plt.title("Distribution of Dependants", fontsize=14, fontweight='bold')
+    plt.xlabel("Number of Dependants", fontsize=12)
+    plt.ylabel("Count", fontsize=12)
+    plt.savefig(os.path.join(PLOTS_DIR, "dependants_distribution.png"), dpi=300, bbox_inches='tight')
+    plt.show()
+
+# Function to plot and save age distribution by marital status
+def plot_age_distribution_by_marital_status(df):
+    required_columns = ['Age (Years)', 'Marital Status']
+    if not validate_columns(df, required_columns):
+        return
+    plt.figure(figsize=(10, 6))
+    sns.histplot(data=df, x='Age (Years)', hue='Marital Status', element='step', palette="Set2", edgecolor="black")
+    plt.title("Age Distribution by Marital Status", fontsize=14, fontweight='bold')
+    plt.xlabel("Age (Years)", fontsize=12)
+    plt.ylabel("Count", fontsize=12)
+    plt.savefig(os.path.join(PLOTS_DIR, "age_distribution_by_marital_status.png"), dpi=300, bbox_inches='tight')
+    plt.show()
+
+# Function to plot and save scatter plots
+def plot_scatter_plots(df):
+    required_columns = {'Distance Commuted to Work (Km)', 'Yearly Salary (Dollar)', 'Age (Years)', 'Dependants'}
+    if not required_columns.issubset(df.columns):
+        print(f"Error: Missing one or more required columns: {required_columns}")
+        return
+
+    sns.set_style("whitegrid")
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+
+    sns.scatterplot(data=df, x='Distance Commuted to Work (Km)', y='Yearly Salary (Dollar)',
+                    hue='Yearly Salary (Dollar)', size='Distance Commuted to Work (Km)', sizes=(20, 200),
+                    palette="coolwarm", edgecolor="black", alpha=0.75, ax=axes[0])
+    sns.regplot(data=df, x='Distance Commuted to Work (Km)', y='Yearly Salary (Dollar)', scatter=False,
+                color="black", line_kws={"linewidth": 1.5, "linestyle": "--"}, ax=axes[0])
+    axes[0].set_title("Distance Commuted vs Salary")
+
+    sns.scatterplot(data=df, x='Age (Years)', y='Yearly Salary (Dollar)',
+                    hue='Yearly Salary (Dollar)', size='Age (Years)', sizes=(20, 200),
+                    palette="coolwarm", edgecolor="black", alpha=0.75, ax=axes[1])
+    sns.regplot(data=df, x='Age (Years)', y='Yearly Salary (Dollar)', scatter=False,
+                color="black", line_kws={"linewidth": 1.5, "linestyle": "--"}, ax=axes[1])
+    axes[1].set_title("Age vs Salary")
+
+    sns.scatterplot(data=df, x='Age (Years)', y='Yearly Salary (Dollar)',
+                    hue='Dependants', size='Dependants', sizes=(20, 200),
+                    palette="viridis", edgecolor="black", alpha=0.75, ax=axes[2])
+    sns.regplot(data=df, x='Age (Years)', y='Yearly Salary (Dollar)', scatter=False,
+                color="black", line_kws={"linewidth": 1.5, "linestyle": "--"}, ax=axes[2])
+    axes[2].set_title("Age vs Salary (Conditioned by Dependants)")
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(PLOTS_DIR, "combined_scatter_plots.png"), dpi=300, bbox_inches='tight')
+    plt.show()
+
+# Main function to generate all plots
+def main():
+    df = load_csv(CSV_FILE_PATH)
+    if df is not None:
+        plot_age_distribution(df)
+        df = clean_dependants_column(df)
+        plot_dependants_distribution(df)
+        plot_age_distribution_by_marital_status(df)
+        plot_scatter_plots(df)
+
+# Execute main function
+if __name__ == "__main__":
+    main()</code></pre>
+            
+            <div class="answers">
+                <h3>Answer Key:</h3>
+                <ol type="a">
+                    <li>If the CSV file is not found, the message <code>"Error: File '[file_path]' not found. Please check the path."</code> is displayed, and the function returns <code>None</code>.</li>
+                    <li>When one or more required columns are missing, <code>validate_columns()</code> returns <code>False</code>. This causes subsequent functions to exit early, preventing execution of visualization code that depends on those columns.</li>
+                    <li>The script ensures the 'Dependants' column is correctly formatted using the <code>clean_dependants_column()</code> function. It converts values to numeric using <code>pd.to_numeric()</code> with <code>errors='coerce'</code> (which converts invalid values to NaN), then uses <code>fillna(0)</code> to replace NaN values with 0.</li>
+                    <li>If any required columns are missing in <code>plot_scatter_plots()</code>, the function prints an error message <code>"Error: Missing one or more required columns: {required_columns}"</code> and returns without generating any plots, preventing execution errors.</li>
+                </ol>
+            </div>
+        </section>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/plugins/autoloader/prism-autoloader.min.js"></script>
+</body>
+</html> 
