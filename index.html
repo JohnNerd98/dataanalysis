@@ -187,6 +187,856 @@ if __name__ == "__main__":
                 </ol>
             </div>
         </section>
+        
+        <section class="more-questions">
+            <h2>Additional Data Analysis Questions</h2>
+            
+            <div class="question-item">
+                <h3>Question 11:</h3>
+                <p>You need to analyze a large dataset of financial transactions. Write a Python function to identify potential fraudulent transactions based on the following criteria: transaction amount > 3 standard deviations from the mean, transaction time between 1:00 AM and 4:00 AM, and transaction location different from the user's home location.</p>
+                <div class="answer">
+                    <pre><code class="language-python">import pandas as pd
+import numpy as np
+from datetime import datetime
+
+def identify_fraudulent_transactions(transactions_df):
+    """
+    Identify potentially fraudulent transactions.
+    
+    Parameters:
+    transactions_df (DataFrame): DataFrame with columns 'amount', 'timestamp', 
+                               'location', and 'user_home_location'
+    
+    Returns:
+    DataFrame: Subset of transactions flagged as potentially fraudulent
+    """
+    # Calculate mean and standard deviation of transaction amounts
+    mean_amount = transactions_df['amount'].mean()
+    std_amount = transactions_df['amount'].std()
+    
+    # Flag transactions with amount > 3 std from mean
+    amount_flag = transactions_df['amount'] > (mean_amount + 3 * std_amount)
+    
+    # Extract hour from timestamp
+    transactions_df['hour'] = transactions_df['timestamp'].apply(
+        lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S').hour
+    )
+    
+    # Flag transactions between 1:00 AM and 4:00 AM
+    time_flag = (transactions_df['hour'] >= 1) & (transactions_df['hour'] <= 4)
+    
+    # Flag transactions where location differs from home location
+    location_flag = transactions_df['location'] != transactions_df['user_home_location']
+    
+    # Combine all flags to identify suspicious transactions
+    suspicious_transactions = transactions_df[amount_flag & time_flag & location_flag]
+    
+    # Clean up by dropping the temporary hour column
+    transactions_df.drop('hour', axis=1, inplace=True)
+    
+    return suspicious_transactions</code></pre>
+                </div>
+            </div>
+            
+            <div class="question-item">
+                <h3>Question 12:</h3>
+                <p>Write a Python function that analyzes a dataset of product reviews to calculate sentiment scores. The function should return the average sentiment score by product category and identify the most positively and negatively reviewed products.</p>
+                <div class="answer">
+                    <pre><code class="language-python">import pandas as pd
+import numpy as np
+from textblob import TextBlob
+
+def analyze_review_sentiment(reviews_df):
+    """
+    Analyze sentiment in product reviews.
+    
+    Parameters:
+    reviews_df (DataFrame): DataFrame with columns 'product_id', 'product_name',
+                          'category', and 'review_text'
+    
+    Returns:
+    tuple: (avg_sentiment_by_category, most_positive_products, most_negative_products)
+    """
+    # Calculate sentiment score for each review
+    reviews_df['sentiment_score'] = reviews_df['review_text'].apply(
+        lambda text: TextBlob(text).sentiment.polarity
+    )
+    
+    # Calculate average sentiment by product
+    product_sentiment = reviews_df.groupby(['product_id', 'product_name', 'category'])['sentiment_score'].mean().reset_index()
+    
+    # Calculate average sentiment by category
+    category_sentiment = reviews_df.groupby('category')['sentiment_score'].mean().reset_index()
+    
+    # Find top 5 most positive products
+    most_positive = product_sentiment.sort_values('sentiment_score', ascending=False).head(5)
+    
+    # Find top 5 most negative products
+    most_negative = product_sentiment.sort_values('sentiment_score', ascending=True).head(5)
+    
+    return category_sentiment, most_positive, most_negative</code></pre>
+                </div>
+            </div>
+            
+            <div class="question-item">
+                <h3>Question 13:</h3>
+                <p>Create a function to analyze customer churn data and identify the key factors that contribute to customer churn. Use feature importance techniques to rank the factors from most to least influential.</p>
+                <div class="answer">
+                    <pre><code class="language-python">import pandas as pd
+import numpy as np
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+import matplotlib.pyplot as plt
+
+def analyze_churn_factors(churn_data):
+    """
+    Analyze factors contributing to customer churn.
+    
+    Parameters:
+    churn_data (DataFrame): DataFrame with customer data including a 'churn' column (1=churned, 0=not churned)
+    
+    Returns:
+    DataFrame: Features ranked by importance
+    """
+    # Separate features and target
+    X = churn_data.drop('churn', axis=1)
+    y = churn_data['churn']
+    
+    # Identify categorical and numerical columns
+    categorical_cols = X.select_dtypes(include=['object', 'category']).columns.tolist()
+    numerical_cols = X.select_dtypes(include=['int64', 'float64']).columns.tolist()
+    
+    # Create preprocessor
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('num', StandardScaler(), numerical_cols),
+            ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_cols)
+        ]
+    )
+    
+    # Create and train model
+    model = Pipeline([
+        ('preprocessor', preprocessor),
+        ('classifier', RandomForestClassifier(n_estimators=100, random_state=42))
+    ])
+    
+    # Fit model
+    model.fit(X, y)
+    
+    # Get feature names after one-hot encoding
+    feature_names = numerical_cols.copy()
+    for col in categorical_cols:
+        categories = churn_data[col].unique()
+        for cat in categories:
+            feature_names.append(f"{col}_{cat}")
+    
+    # Get feature importances
+    importances = model.named_steps['classifier'].feature_importances_
+    
+    # Match importances with feature names (might need adjustment based on actual encoder output)
+    feature_importance = pd.DataFrame({
+        'feature': feature_names[:len(importances)],
+        'importance': importances
+    }).sort_values('importance', ascending=False)
+    
+    # Create visualization
+    plt.figure(figsize=(10, 6))
+    plt.barh(feature_importance['feature'][:10], feature_importance['importance'][:10])
+    plt.xlabel('Importance')
+    plt.ylabel('Feature')
+    plt.title('Top 10 Features Contributing to Customer Churn')
+    plt.tight_layout()
+    plt.savefig('churn_factors.png')
+    
+    return feature_importance</code></pre>
+                </div>
+            </div>
+            
+            <div class="question-item">
+                <h3>Question 14:</h3>
+                <p>Write a Python function to perform time series analysis on daily stock price data. The function should decompose the time series into trend, seasonal, and residual components, and forecast the next 30 days of prices.</p>
+                <div class="answer">
+                    <pre><code class="language-python">import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from statsmodels.tsa.seasonal import seasonal_decompose
+from statsmodels.tsa.arima.model import ARIMA
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+
+def analyze_stock_prices(stock_data, ticker_symbol):
+    """
+    Analyze time series stock price data.
+    
+    Parameters:
+    stock_data (DataFrame): DataFrame with DatetimeIndex and 'close_price' column
+    ticker_symbol (str): Stock ticker symbol for labeling
+    
+    Returns:
+    tuple: (decomposition_result, forecast_values, forecast_df)
+    """
+    # Ensure data is sorted by date
+    stock_data = stock_data.sort_index()
+    
+    # Decompose time series
+    decomposition = seasonal_decompose(stock_data['close_price'], model='multiplicative', period=21)
+    
+    # Plot decomposition
+    fig, axes = plt.subplots(4, 1, figsize=(12, 10))
+    decomposition.observed.plot(ax=axes[0])
+    axes[0].set_title(f'{ticker_symbol} Observed')
+    decomposition.trend.plot(ax=axes[1])
+    axes[1].set_title('Trend')
+    decomposition.seasonal.plot(ax=axes[2])
+    axes[2].set_title('Seasonality')
+    decomposition.resid.plot(ax=axes[3])
+    axes[3].set_title('Residuals')
+    plt.tight_layout()
+    plt.savefig(f'{ticker_symbol}_decomposition.png')
+    
+    # Identify p, d, q parameters
+    # Plot ACF and PACF to help determine parameters
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8))
+    plot_acf(stock_data['close_price'], ax=ax1)
+    plot_pacf(stock_data['close_price'], ax=ax2)
+    plt.savefig(f'{ticker_symbol}_acf_pacf.png')
+    
+    # Fit ARIMA model (using example parameters p=5, d=1, q=0)
+    model = ARIMA(stock_data['close_price'], order=(5, 1, 0))
+    model_fit = model.fit()
+    
+    # Forecast next 30 days
+    forecast = model_fit.forecast(steps=30)
+    
+    # Create forecast DataFrame
+    last_date = stock_data.index[-1]
+    forecast_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=30)
+    forecast_df = pd.DataFrame({
+        'date': forecast_dates,
+        'forecast_price': forecast
+    })
+    
+    # Plot historical prices and forecast
+    plt.figure(figsize=(12, 6))
+    plt.plot(stock_data.index, stock_data['close_price'], label='Historical')
+    plt.plot(forecast_df['date'], forecast_df['forecast_price'], label='Forecast', color='red')
+    plt.title(f'{ticker_symbol} Stock Price Forecast')
+    plt.xlabel('Date')
+    plt.ylabel('Price')
+    plt.legend()
+    plt.savefig(f'{ticker_symbol}_forecast.png')
+    
+    return decomposition, forecast, forecast_df</code></pre>
+                </div>
+            </div>
+            
+            <div class="question-item">
+                <h3>Question 15:</h3>
+                <p>Develop a function that takes a dataset of website user sessions and performs a cohort analysis. Group users by the month they first visited the site and track their retention over the subsequent 6 months.</p>
+                <div class="answer">
+                    <pre><code class="language-python">import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+def perform_cohort_analysis(sessions_df):
+    """
+    Perform cohort analysis on user session data.
+    
+    Parameters:
+    sessions_df (DataFrame): DataFrame with 'user_id', 'session_date' columns
+    
+    Returns:
+    DataFrame: Cohort retention table
+    """
+    # Convert session_date to datetime if needed
+    if not pd.api.types.is_datetime64_any_dtype(sessions_df['session_date']):
+        sessions_df['session_date'] = pd.to_datetime(sessions_df['session_date'])
+    
+    # Extract month and year from session_date
+    sessions_df['cohort_month'] = sessions_df['session_date'].dt.to_period('M')
+    
+    # Identify the first month each user visited the site
+    first_visits = sessions_df.groupby('user_id')['cohort_month'].min()
+    sessions_df = sessions_df.merge(first_visits.rename('first_visit_month'), 
+                                    left_on='user_id', right_index=True)
+    
+    # Calculate the month number (0-indexed) for each session relative to the user's first visit
+    sessions_df['month_number'] = (sessions_df['cohort_month'].astype(int) - 
+                                  sessions_df['first_visit_month'].astype(int))
+    
+    # Only keep the first 6 months
+    sessions_df = sessions_df[sessions_df['month_number'] <= 6]
+    
+    # Count unique users by cohort and month number
+    cohort_data = sessions_df.groupby(['first_visit_month', 'month_number'])['user_id'].nunique().reset_index()
+    
+    # Pivot the data to create the cohort table
+    cohort_table = cohort_data.pivot(index='first_visit_month', 
+                                     columns='month_number', 
+                                     values='user_id')
+    
+    # Calculate retention rates
+    cohort_sizes = cohort_table[0]
+    retention_table = cohort_table.divide(cohort_sizes, axis=0) * 100
+    
+    # Visualize retention rates
+    plt.figure(figsize=(12, 8))
+    sns.heatmap(retention_table, annot=True, fmt='.1f', cmap='YlGnBu')
+    plt.title('User Cohort Retention Analysis (%)')
+    plt.xlabel('Month Number')
+    plt.ylabel('Cohort Month')
+    plt.savefig('cohort_retention.png')
+    
+    return retention_table</code></pre>
+                </div>
+            </div>
+            
+            <div class="question-item">
+                <h3>Question 16:</h3>
+                <p>Create a function to analyze customer segmentation using K-means clustering. The function should determine the optimal number of clusters using the elbow method and visualize the resulting customer segments.</p>
+                <div class="answer">
+                    <pre><code class="language-python">import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+import seaborn as sns
+
+def segment_customers(customer_data):
+    """
+    Segment customers using K-means clustering.
+    
+    Parameters:
+    customer_data (DataFrame): DataFrame with customer features
+    
+    Returns:
+    tuple: (DataFrame with cluster assignments, optimal k value)
+    """
+    # Select numerical features for clustering
+    features = customer_data.select_dtypes(include=['int64', 'float64'])
+    
+    # Standardize the data
+    scaler = StandardScaler()
+    scaled_features = scaler.fit_transform(features)
+    
+    # Determine optimal number of clusters using elbow method
+    inertia = []
+    k_range = range(1, 11)
+    
+    for k in k_range:
+        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+        kmeans.fit(scaled_features)
+        inertia.append(kmeans.inertia_)
+    
+    # Plot elbow curve
+    plt.figure(figsize=(10, 6))
+    plt.plot(k_range, inertia, 'o-')
+    plt.xlabel('Number of clusters (k)')
+    plt.ylabel('Inertia')
+    plt.title('Elbow Method for Optimal k')
+    plt.savefig('elbow_curve.png')
+    
+    # Determine optimal k (this is a simple method - could be more sophisticated)
+    optimal_k = 4  # Default value
+    
+    # Calculate rate of change in inertia
+    inertia_changes = np.diff(inertia)
+    rate_of_change = np.diff(inertia_changes)
+    
+    # Find point where rate of change is greatest (the "elbow")
+    if len(rate_of_change) > 0:
+        elbow_idx = np.argmax(np.abs(rate_of_change)) + 2  # +2 because of two diff operations
+        optimal_k = k_range[elbow_idx]
+    
+    # Apply K-means with optimal k
+    kmeans = KMeans(n_clusters=optimal_k, random_state=42, n_init=10)
+    cluster_labels = kmeans.fit_predict(scaled_features)
+    
+    # Add cluster labels to original data
+    customer_segmented = customer_data.copy()
+    customer_segmented['cluster'] = cluster_labels
+    
+    # Visualize clusters using PCA for dimensionality reduction
+    pca = PCA(n_components=2)
+    pca_result = pca.fit_transform(scaled_features)
+    
+    # Create visualization
+    plt.figure(figsize=(10, 8))
+    scatter = plt.scatter(pca_result[:, 0], pca_result[:, 1], c=cluster_labels, cmap='viridis')
+    plt.colorbar(scatter, label='Cluster')
+    plt.title('Customer Segments Visualization (PCA)')
+    plt.xlabel('Principal Component 1')
+    plt.ylabel('Principal Component 2')
+    plt.savefig('customer_segments.png')
+    
+    # Analyze cluster characteristics
+    cluster_profiles = customer_segmented.groupby('cluster').mean()
+    
+    # Visualize cluster profiles
+    plt.figure(figsize=(14, 8))
+    sns.heatmap(cluster_profiles.T, annot=True, cmap='YlGnBu')
+    plt.title('Cluster Profiles')
+    plt.savefig('cluster_profiles.png')
+    
+    return customer_segmented, optimal_k</code></pre>
+                </div>
+            </div>
+            
+            <div class="question-item">
+                <h3>Question 17:</h3>
+                <p>Implement a function that performs A/B test analysis for an e-commerce website. The function should take conversion data for two different page versions and determine if there is a statistically significant difference in conversion rates.</p>
+                <div class="answer">
+                    <pre><code class="language-python">import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.stats as stats
+
+def analyze_ab_test(ab_test_data):
+    """
+    Analyze A/B test results.
+    
+    Parameters:
+    ab_test_data (DataFrame): DataFrame with columns 'user_id', 'group' (A or B), 
+                              'converted' (0 or 1)
+    
+    Returns:
+    dict: Dictionary containing test results and metrics
+    """
+    # Separate data for groups A and B
+    group_a = ab_test_data[ab_test_data['group'] == 'A']
+    group_b = ab_test_data[ab_test_data['group'] == 'B']
+    
+    # Calculate conversion rates
+    conversion_rate_a = group_a['converted'].mean()
+    conversion_rate_b = group_b['converted'].mean()
+    
+    # Calculate sample sizes
+    n_a = len(group_a)
+    n_b = len(group_b)
+    
+    # Calculate successes
+    converted_a = group_a['converted'].sum()
+    converted_b = group_b['converted'].sum()
+    
+    # Calculate relative difference
+    relative_difference = (conversion_rate_b - conversion_rate_a) / conversion_rate_a * 100
+    
+    # Perform chi-square test
+    chi2, p_value, _, _ = stats.chi2_contingency([
+        [converted_a, n_a - converted_a],
+        [converted_b, n_b - converted_b]
+    ])
+    
+    # Perform z-test (alternative approach)
+    z_stat, z_p_value = stats.proportions_ztest(
+        [converted_a, converted_b], 
+        [n_a, n_b]
+    )
+    
+    # Calculate confidence interval for difference in proportions
+    se = np.sqrt(conversion_rate_a * (1 - conversion_rate_a) / n_a + 
+                conversion_rate_b * (1 - conversion_rate_b) / n_b)
+    margin_of_error = 1.96 * se  # 95% confidence interval
+    ci_lower = (conversion_rate_b - conversion_rate_a) - margin_of_error
+    ci_upper = (conversion_rate_b - conversion_rate_a) + margin_of_error
+    
+    # Visualize results
+    plt.figure(figsize=(12, 6))
+    
+    # Bar chart of conversion rates
+    plt.subplot(1, 2, 1)
+    bars = plt.bar(['Group A', 'Group B'], [conversion_rate_a, conversion_rate_b])
+    bars[0].set_color('skyblue')
+    bars[1].set_color('lightgreen')
+    plt.title('Conversion Rates')
+    plt.ylabel('Conversion Rate')
+    
+    # Add conversion rate labels
+    for i, bar in enumerate(bars):
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2, height,
+                f'{height:.2%}', ha='center', va='bottom')
+    
+    # Sample size comparison
+    plt.subplot(1, 2, 2)
+    sample_bars = plt.bar(['Group A', 'Group B'], [n_a, n_b])
+    sample_bars[0].set_color('skyblue')
+    sample_bars[1].set_color('lightgreen')
+    plt.title('Sample Sizes')
+    plt.ylabel('Number of Users')
+    plt.tight_layout()
+    
+    plt.savefig('ab_test_results.png')
+    
+    # Assemble results
+    results = {
+        'conversion_rate_a': conversion_rate_a,
+        'conversion_rate_b': conversion_rate_b,
+        'sample_size_a': n_a,
+        'sample_size_b': n_b,
+        'relative_difference': relative_difference,
+        'p_value': p_value,
+        'z_p_value': z_p_value,
+        'confidence_interval': (ci_lower, ci_upper),
+        'is_significant': p_value < 0.05,
+        'recommended_action': 'Implement Version B' if (p_value < 0.05 and conversion_rate_b > conversion_rate_a) 
+                              else 'Keep Version A' if (p_value < 0.05 and conversion_rate_a > conversion_rate_b)
+                              else 'Continue Testing'
+    }
+    
+    return results</code></pre>
+                </div>
+            </div>
+            
+            <div class="question-item">
+                <h3>Question 18:</h3>
+                <p>Write a function to perform market basket analysis on transaction data using the Apriori algorithm. Identify frequent itemsets and generate association rules with support, confidence, and lift metrics.</p>
+                <div class="answer">
+                    <pre><code class="language-python">import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from mlxtend.frequent_patterns import apriori, association_rules
+from mlxtend.preprocessing import TransactionEncoder
+
+def market_basket_analysis(transaction_data, min_support=0.01, min_confidence=0.5):
+    """
+    Perform market basket analysis using Apriori algorithm.
+    
+    Parameters:
+    transaction_data (list): List of lists, where each inner list contains items in a transaction
+    min_support (float): Minimum support threshold
+    min_confidence (float): Minimum confidence threshold
+    
+    Returns:
+    tuple: (frequent_itemsets, association_rules_df)
+    """
+    # Convert list of transactions to one-hot encoded DataFrame
+    te = TransactionEncoder()
+    te_array = te.fit_transform(transaction_data)
+    df = pd.DataFrame(te_array, columns=te.columns_)
+    
+    # Find frequent itemsets
+    frequent_itemsets = apriori(df, min_support=min_support, use_colnames=True)
+    
+    # Generate association rules
+    rules = association_rules(frequent_itemsets, metric="confidence", min_threshold=min_confidence)
+    
+    # Sort rules by lift
+    rules = rules.sort_values('lift', ascending=False)
+    
+    # Visualize the results
+    # 1. Distribution of itemset length
+    plt.figure(figsize=(10, 6))
+    plt.hist(frequent_itemsets['itemsets'].apply(len), bins=range(1, 10), alpha=0.7)
+    plt.xlabel('Itemset Size')
+    plt.ylabel('Count')
+    plt.title('Distribution of Frequent Itemset Sizes')
+    plt.xticks(range(1, 10))
+    plt.savefig('itemset_distribution.png')
+    
+    # 2. Scatter plot of support vs confidence
+    plt.figure(figsize=(10, 8))
+    plt.scatter(rules['support'], rules['confidence'], alpha=0.5, s=rules['lift']*20)
+    plt.xlabel('Support')
+    plt.ylabel('Confidence')
+    plt.title('Support vs Confidence (size represents lift)')
+    plt.grid(True, alpha=0.3)
+    plt.savefig('support_confidence_scatter.png')
+    
+    # 3. Top 10 rules by lift
+    top_rules = rules.head(10).copy()
+    top_rules['antecedents'] = top_rules['antecedents'].apply(lambda x: ', '.join(list(x)))
+    top_rules['consequents'] = top_rules['consequents'].apply(lambda x: ', '.join(list(x)))
+    
+    plt.figure(figsize=(12, 8))
+    plt.barh(range(len(top_rules)), top_rules['lift'])
+    plt.yticks(range(len(top_rules)), [f"{a} → {c}" for a, c in zip(top_rules['antecedents'], top_rules['consequents'])])
+    plt.xlabel('Lift')
+    plt.title('Top 10 Rules by Lift')
+    plt.tight_layout()
+    plt.savefig('top_rules_by_lift.png')
+    
+    return frequent_itemsets, rules</code></pre>
+                </div>
+            </div>
+            
+            <div class="question-item">
+                <h3>Question 19:</h3>
+                <p>Develop a function to analyze geospatial data of customer locations and store locations. The function should calculate the distance between customers and the nearest store, and generate a heat map of customer density.</p>
+                <div class="answer">
+                    <pre><code class="language-python">import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import folium
+from folium.plugins import HeatMap
+from scipy.spatial.distance import cdist
+from haversine import haversine
+
+def analyze_geospatial_data(customer_data, store_data):
+    """
+    Analyze geospatial relationship between customers and stores.
+    
+    Parameters:
+    customer_data (DataFrame): DataFrame with customer locations (lat, lon)
+    store_data (DataFrame): DataFrame with store locations (lat, lon)
+    
+    Returns:
+    tuple: (customer_data with nearest store info, folium map object)
+    """
+    # Function to calculate haversine distance between two points
+    def calc_distance(lat1, lon1, lat2, lon2):
+        return haversine((lat1, lon1), (lat2, lon2))
+    
+    # Calculate distance from each customer to each store
+    customer_with_nearest = customer_data.copy()
+    customer_with_nearest['nearest_store_id'] = None
+    customer_with_nearest['distance_to_nearest_km'] = None
+    
+    for idx, customer in customer_data.iterrows():
+        # Calculate distances to all stores
+        distances = []
+        for _, store in store_data.iterrows():
+            dist = calc_distance(
+                customer['latitude'], customer['longitude'],
+                store['latitude'], store['longitude']
+            )
+            distances.append((store['store_id'], dist))
+        
+        # Find nearest store
+        nearest = min(distances, key=lambda x: x[1])
+        customer_with_nearest.at[idx, 'nearest_store_id'] = nearest[0]
+        customer_with_nearest.at[idx, 'distance_to_nearest_km'] = nearest[1]
+    
+    # Calculate summary statistics
+    avg_distance = customer_with_nearest['distance_to_nearest_km'].mean()
+    max_distance = customer_with_nearest['distance_to_nearest_km'].max()
+    
+    # Count customers by nearest store
+    store_customer_counts = customer_with_nearest.groupby('nearest_store_id').size().reset_index(name='customer_count')
+    
+    # Visualize results with Folium
+    # Create base map centered on the mean of all locations
+    all_lats = list(customer_data['latitude']) + list(store_data['latitude'])
+    all_lons = list(customer_data['longitude']) + list(store_data['longitude'])
+    center_lat = sum(all_lats) / len(all_lats)
+    center_lon = sum(all_lons) / len(all_lons)
+    
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=10)
+    
+    # Add customer heat map
+    heat_data = [[row['latitude'], row['longitude']] for _, row in customer_data.iterrows()]
+    HeatMap(heat_data).add_to(m)
+    
+    # Add store markers
+    for _, store in store_data.iterrows():
+        # Get customer count for this store
+        customer_count = store_customer_counts[
+            store_customer_counts['nearest_store_id'] == store['store_id']
+        ]['customer_count'].values[0] if store['store_id'] in store_customer_counts['nearest_store_id'].values else 0
+        
+        folium.Marker(
+            location=[store['latitude'], store['longitude']],
+            popup=f"Store ID: {store['store_id']}<br>Nearest Customers: {customer_count}",
+            icon=folium.Icon(color='blue')
+        ).add_to(m)
+    
+    # Save map as HTML
+    m.save('customer_store_map.html')
+    
+    # Create matplotlib visualizations for additional insights
+    # Distance distribution histogram
+    plt.figure(figsize=(10, 6))
+    plt.hist(customer_with_nearest['distance_to_nearest_km'], bins=20, alpha=0.7)
+    plt.axvline(avg_distance, color='red', linestyle='--', label=f'Mean: {avg_distance:.2f} km')
+    plt.xlabel('Distance to Nearest Store (km)')
+    plt.ylabel('Number of Customers')
+    plt.title('Distribution of Customer Distances to Nearest Store')
+    plt.legend()
+    plt.grid(alpha=0.3)
+    plt.savefig('distance_distribution.png')
+    
+    # Store customer counts
+    plt.figure(figsize=(12, 6))
+    plt.bar(store_customer_counts['nearest_store_id'].astype(str), 
+            store_customer_counts['customer_count'])
+    plt.xlabel('Store ID')
+    plt.ylabel('Number of Nearest Customers')
+    plt.title('Number of Customers per Store (Nearest Store Analysis)')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.savefig('customers_per_store.png')
+    
+    return customer_with_nearest, m</code></pre>
+                </div>
+            </div>
+            
+            <div class="question-item">
+                <h3>Question 20:</h3>
+                <p>Create a function to analyze customer feedback text data. The function should perform sentiment analysis, extract common themes using topic modeling, and identify the most frequently mentioned product features.</p>
+                <div class="answer">
+                    <pre><code class="language-python">import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from sklearn.decomposition import LatentDirichletAllocation, NMF
+from nltk.sentiment import SentimentIntensityAnalyzer
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from wordcloud import WordCloud
+import re
+import nltk
+
+def analyze_customer_feedback(feedback_data):
+    """
+    Analyze customer feedback text data.
+    
+    Parameters:
+    feedback_data (DataFrame): DataFrame with 'feedback_text' and 'product_id' columns
+    
+    Returns:
+    dict: Dictionary with analysis results
+    """
+    # Download necessary NLTK resources
+    try:
+        nltk.data.find('tokenizers/punkt')
+    except LookupError:
+        nltk.download('punkt')
+    try:
+        nltk.data.find('corpora/stopwords')
+    except LookupError:
+        nltk.download('stopwords')
+    try:
+        nltk.data.find('corpora/wordnet')
+    except LookupError:
+        nltk.download('wordnet')
+    try:
+        nltk.data.find('sentiment/vader_lexicon')
+    except LookupError:
+        nltk.download('vader_lexicon')
+    
+    # Text preprocessing function
+    def preprocess_text(text):
+        # Lower case
+        text = text.lower()
+        # Remove special characters and numbers
+        text = re.sub(r'[^a-zA-Z\s]', '', text)
+        # Tokenize
+        tokens = word_tokenize(text)
+        # Remove stopwords
+        stop_words = set(stopwords.words('english'))
+        tokens = [t for t in tokens if t not in stop_words and len(t) > 2]
+        # Lemmatize
+        lemmatizer = WordNetLemmatizer()
+        tokens = [lemmatizer.lemmatize(t) for t in tokens]
+        return ' '.join(tokens)
+    
+    # Process feedback text
+    feedback_data['processed_text'] = feedback_data['feedback_text'].apply(preprocess_text)
+    
+    # Sentiment Analysis
+    sia = SentimentIntensityAnalyzer()
+    feedback_data['sentiment_score'] = feedback_data['feedback_text'].apply(
+        lambda x: sia.polarity_scores(x)['compound']
+    )
+    feedback_data['sentiment'] = feedback_data['sentiment_score'].apply(
+        lambda s: 'positive' if s > 0.05 else 'negative' if s < -0.05 else 'neutral'
+    )
+    
+    # Visualize sentiment distribution
+    plt.figure(figsize=(10, 6))
+    sns.countplot(data=feedback_data, x='sentiment')
+    plt.title('Distribution of Sentiment in Customer Feedback')
+    plt.savefig('sentiment_distribution.png')
+    
+    # Calculate sentiment by product
+    product_sentiment = feedback_data.groupby('product_id')['sentiment_score'].mean().sort_values(ascending=False).reset_index()
+    
+    # Topic Modeling with LDA
+    vectorizer = CountVectorizer(max_features=1000, min_df=5)
+    doc_term_matrix = vectorizer.fit_transform(feedback_data['processed_text'])
+    
+    # Find optimal number of topics
+    n_topics_range = range(2, 11)
+    coherence_scores = []
+    
+    for n_topics in n_topics_range:
+        lda = LatentDirichletAllocation(n_components=n_topics, random_state=42)
+        lda.fit(doc_term_matrix)
+        coherence_scores.append(lda.perplexity(doc_term_matrix))
+    
+    # Plot perplexity scores
+    plt.figure(figsize=(10, 6))
+    plt.plot(n_topics_range, coherence_scores, 'o-')
+    plt.xlabel('Number of Topics')
+    plt.ylabel('Perplexity Score (lower is better)')
+    plt.title('Topic Model Optimization')
+    plt.savefig('topic_optimization.png')
+    
+    # Select optimal number of topics (this is a simple approach - could be improved)
+    optimal_topics = n_topics_range[np.argmin(coherence_scores)]
+    
+    # Build final topic model
+    lda = LatentDirichletAllocation(n_components=optimal_topics, random_state=42)
+    lda.fit(doc_term_matrix)
+    
+    # Get top terms for each topic
+    feature_names = vectorizer.get_feature_names_out()
+    topic_terms = {}
+    
+    for topic_idx, topic in enumerate(lda.components_):
+        topic_terms[f"Topic {topic_idx+1}"] = [feature_names[i] for i in topic.argsort()[:-11:-1]]
+    
+    # Assign topics to feedback
+    topic_probs = lda.transform(doc_term_matrix)
+    feedback_data['primary_topic'] = topic_probs.argmax(axis=1) + 1
+    
+    # Create word cloud of most frequent terms
+    all_text = ' '.join(feedback_data['processed_text'])
+    wordcloud = WordCloud(width=800, height=400, background_color='white').generate(all_text)
+    
+    plt.figure(figsize=(12, 6))
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis('off')
+    plt.title('Most Frequent Terms in Customer Feedback')
+    plt.savefig('feedback_wordcloud.png')
+    
+    # Extract product features
+    # This is a simple approach using n-grams - a more sophisticated NLP approach would be better
+    feature_vectorizer = CountVectorizer(ngram_range=(1, 2), max_features=100)
+    feature_matrix = feature_vectorizer.fit_transform(feedback_data['processed_text'])
+    feature_names = feature_vectorizer.get_feature_names_out()
+    feature_counts = feature_matrix.sum(axis=0).A1
+    
+    # Get top features
+    top_features = [(feature_names[i], feature_counts[i]) for i in feature_counts.argsort()[::-1][:20]]
+    
+    # Visualize top features
+    plt.figure(figsize=(12, 8))
+    plt.barh([feat[0] for feat in top_features], [feat[1] for feat in top_features])
+    plt.xlabel('Frequency')
+    plt.title('Top 20 Most Mentioned Terms/Features in Feedback')
+    plt.tight_layout()
+    plt.savefig('top_features.png')
+    
+    # Prepare results
+    results = {
+        'sentiment_summary': feedback_data['sentiment'].value_counts().to_dict(),
+        'product_sentiment_ranking': product_sentiment.to_dict('records'),
+        'optimal_topic_count': optimal_topics,
+        'topic_terms': topic_terms,
+        'top_mentioned_features': top_features
+    }
+    
+    return results</code></pre>
+                </div>
+            </div>
+        </section>
     </div>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-core.min.js"></script>
